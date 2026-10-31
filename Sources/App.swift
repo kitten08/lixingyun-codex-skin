@@ -21,9 +21,20 @@ final class Model: ObservableObject {
     @Published var status = "选择一套李星云主题，开启你的江湖。"
     @Published var connected = false
     @Published var enabled = false
+    @Published var introPending = false
+    @Published var introPhase = "idle"
     var watcher: Process?
     let queue = DispatchQueue(label: "local.codex.lixingyun.bridge")
     var current: Preset { presets.first(where: {$0.id == selected}) ?? presets[0] }
+    var introActive: Bool { introPending || ["preparing", "ready", "playing", "revealing"].contains(introPhase) }
+    var connectionLabel: String {
+        switch introPhase {
+        case "preparing", "ready": return "开场准备中"
+        case "playing": return "开场播放中"
+        case "revealing": return "界面衔接中"
+        default: return introPending ? "开场等待连接" : (connected ? (enabled ? "背景已连接" : "Codex 已连接") : "等待 Codex 连接")
+        }
+    }
     func save() { defaults.set(selected, forKey: "wallpaper"); defaults.set(startup, forKey: "startup"); defaults.set(opacity, forKey: "opacity") }
     func command(_ arguments: [String], completion: (([String:Any]) -> Void)? = nil) {
         busy = true
@@ -34,6 +45,8 @@ final class Model: ObservableObject {
                 self.status = result["message"] as? String ?? "操作完成"
                 if let c = result["connected"] as? Bool {self.connected = c}
                 if let e = result["enabled"] as? Bool {self.enabled = e}
+                if let pending = result["introPending"] as? Bool {self.introPending = pending}
+                if let phase = result["introPhase"] as? String {self.introPhase = phase}
                 completion?(result)
             }
         }
@@ -49,14 +62,24 @@ final class Model: ObservableObject {
         } catch { return ["ok":false,"message":"无法启动背景连接：\(error.localizedDescription)"] }
     }
     func apply() {save();command(["apply","--preset",selected,"--opacity",String(opacity)])}
+    func armIntro(completion: @escaping ([String:Any]) -> Void) {
+        save(); startWatch()
+        introPending = true; introPhase = "queued"
+        status = "已准备在 Codex 窗口中播放开场…"
+        command(["arm-intro","--preset",selected,"--startup",startup,"--opacity",String(opacity)]) { result in
+            if result["ok"] as? Bool != true {self.introPending = false;self.introPhase = "error"}
+            completion(result)
+        }
+    }
     func pause() {paused.toggle();command(["pause","--paused",String(paused)])}
-    func restore() {paused = false; command(["restore"])}
+    func restore() {paused = false;introPending = false;introPhase = "cancelled";command(["restore"])}
     func setOpacity() {save();command(["opacity","--value",String(opacity)])}
     func refresh() {command(["status"]) { result in
         if let p = result["paused"] as? Bool {self.paused = p}
     }}
     func startWatch() {
-        guard watcher == nil else {return}
+        if let p = watcher, p.isRunning {return}
+        watcher = nil
         let p = Process(); p.executableURL = nodeURL
         p.arguments = [resources.appendingPathComponent("runtime/bridge.mjs").path,"watch","--assets",assets.path]
         p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
@@ -93,8 +116,8 @@ struct Gallery: View {
                     Text("你欲何为").font(.system(size:34,weight:.semibold,design:.serif)).tracking(7)
                 }
                 Spacer()
-                HStack(spacing:7) { Circle().fill(model.connected ? Color.green : Color.orange).frame(width:6,height:6); Text(model.connected ? "背景已连接" : "等待 Codex 连接").font(.system(size:12)) }.foregroundColor(.secondary)
-                Button(action:launch) {Label("启动 Codex",systemImage:"play.fill").padding(.horizontal,10).padding(.vertical,5)}.buttonStyle(.borderedProminent).tint(crimson)
+                HStack(spacing:7) { Circle().fill(model.introActive ? crimson : (model.connected ? Color.green : Color.orange)).frame(width:6,height:6); Text(model.connectionLabel).font(.system(size:12)) }.foregroundColor(.secondary)
+                Button(action:launch) {Label("启动 Codex",systemImage:"play.fill").padding(.horizontal,10).padding(.vertical,5)}.buttonStyle(.borderedProminent).tint(crimson).disabled(model.busy)
             }
             HStack(alignment:.top,spacing:22) {
                 VStack(alignment:.leading,spacing:10) {
@@ -109,16 +132,16 @@ struct Gallery: View {
                     HStack {
                         Text(model.current.name).font(.system(size:15,weight:.semibold))
                         Spacer()
-                        Toggle("视频预览",isOn:$moviePreview).toggleStyle(.switch).controlSize(.mini).font(.system(size:11))
+                        Toggle("素材视频预览",isOn:$moviePreview).toggleStyle(.switch).controlSize(.mini).font(.system(size:11))
                     }
                     Text(model.current.subtitle).font(.system(size:12)).foregroundColor(.secondary)
                 }.frame(maxWidth:.infinity)
                 VStack(alignment:.leading,spacing:17) {
                     Text("播放设置").font(.system(size:14,weight:.semibold))
                     VStack(alignment:.leading,spacing:7) {
-                        Text("启动时播放一次").font(.system(size:11)).foregroundColor(.secondary)
+                        Text("在 Codex 窗口内播放一次").font(.system(size:11)).foregroundColor(.secondary)
                         Picker("",selection:$model.startup) {ForEach(presets) {p in Text(p.name).tag(p.id)}}.labelsHidden().onChange(of:model.startup) {_ in model.save()}
-                        Button("预览启动动画",action:intro).frame(maxWidth:.infinity)
+                        Button("在 Codex 中预览",action:intro).frame(maxWidth:.infinity).disabled(model.busy)
                     }
                     Divider()
                     VStack(alignment:.leading,spacing:7) {
@@ -133,7 +156,7 @@ struct Gallery: View {
                         }.controlSize(.small)
                     }
                     Spacer(minLength:0)
-                    Text("关闭窗口后仍可从菜单栏打开。\n下次从本应用启动 Codex，即会播放所选动画。")
+                    Text("开场、人物背景与界面在同一窗口内衔接。\n关闭此窗口后仍可从菜单栏打开。")
                         .font(.system(size:10)).foregroundColor(.secondary).lineSpacing(3)
                 }.frame(width:238)
             }
@@ -157,7 +180,7 @@ struct Gallery: View {
                 Image(systemName:model.connected ? "checkmark.circle" : "info.circle").foregroundColor(model.connected ? .green : .secondary)
                 VStack(alignment:.leading,spacing:3) {
                     Text(model.status).font(.system(size:11)).textSelection(.enabled)
-                    if !model.connected {Text("已有 Codex 正在运行时，请先结束任务并完全退出，再点击「启动 Codex」。").font(.system(size:10)).foregroundColor(.secondary)}
+                    if !model.connected {Text("连接尚未就绪时，请等待 Codex 启动；旧窗口需完全退出后从这里重开。").font(.system(size:10)).foregroundColor(.secondary)}
                 }
                 Spacer();Button("刷新") {model.refresh()}.controlSize(.mini)
             }.padding(12).background(Color.white.opacity(0.035)).clipShape(RoundedRectangle(cornerRadius:9))
@@ -165,28 +188,17 @@ struct Gallery: View {
     }
 }
 
-final class SplashWindow: NSWindow {
-    var skip:(()->Void)?
-    override var canBecomeKey: Bool {true}
-    override func keyDown(with event: NSEvent) {if event.keyCode==53 {skip?()} else {super.keyDown(with:event)}}
-}
 final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let model = Model()
     var window: NSWindow!
     var statusItem: NSStatusItem!
-    var splash: SplashWindow?
-    var player: AVPlayer?
-    var observer: NSObjectProtocol?
-    var failureObserver: NSObjectProtocol?
-    var done: (() -> Void)?
-    var splashTimer: Timer?
     var connectionTimer: Timer?
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard presets.count==5 else { let a=NSAlert();a.messageText="素材库不完整，请重新安装完整应用。";a.runModal();NSApp.terminate(nil);return }
         NSApp.setActivationPolicy(.regular)
         makeMenu()
         makeWindow()
-        model.startWatch(); model.refresh()
+        model.startWatch()
         connectionTimer = Timer.scheduledTimer(withTimeInterval:8,repeats:true) { [weak self] _ in
             guard let self=self,self.window.isVisible,!self.model.busy else {return}
             self.model.refresh()
@@ -205,7 +217,7 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusItem=NSStatusBar.system.statusItem(withLength:NSStatusItem.variableLength)
         statusItem.button?.title="星云"
         let menu=NSMenu()
-        for (title,action) in [("主题设置…",#selector(showSettings)),("播放动画并打开 Codex",#selector(launch)),("暂停 / 继续动态背景",#selector(pause)),("恢复 Codex 默认外观",#selector(restore))] {let i=NSMenuItem(title:title,action:action,keyEquivalent:"");i.target=self;menu.addItem(i)}
+        for (title,action) in [("主题设置…",#selector(showSettings)),("同窗开场并打开 Codex",#selector(launch)),("暂停 / 继续动态背景",#selector(pause)),("恢复 Codex 默认外观",#selector(restore))] {let i=NSMenuItem(title:title,action:action,keyEquivalent:"");i.target=self;menu.addItem(i)}
         menu.addItem(.separator());let q=NSMenuItem(title:"退出星云 · Codex",action:#selector(quit),keyEquivalent:"");q.target=self;menu.addItem(q);statusItem.menu=menu
         for item in appMenu.items {item.target=self}
     }
@@ -215,52 +227,42 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.minSize=NSSize(width:1050,height:760);window.delegate=self;window.isReleasedWhenClosed=false
         window.contentView=NSHostingView(rootView:Gallery(model:model,intro:{[weak self] in self?.previewIntro()},launch:{[weak self] in self?.launch()}));window.center()
     }
-    @objc func showSettings() {window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true);if !model.busy {model.refresh()}}
-    @objc func previewIntro() {playIntro { [weak self] in self?.showSettings() }}
-    @objc func launch() {model.save();window.orderOut(nil);playIntro { [weak self] in self?.openCodex() }}
-    func playIntro(completion:@escaping()->Void) {
-        guard splash==nil,let preset=presets.first(where:{$0.id==model.startup}) else {return}
-        let url=assets.appendingPathComponent(preset.startup)
-        let visible=NSScreen.main?.visibleFrame ?? NSRect(x:0,y:0,width:1440,height:900)
-        let width=min(1280,visible.width*0.90,visible.height*0.9*16/9), size=NSSize(width:width,height:width*9/16)
-        let w=SplashWindow(contentRect:NSRect(origin:.zero,size:size),styleMask:.borderless,backing:.buffered,defer:false)
-        w.isReleasedWhenClosed=false;w.backgroundColor = .black;w.hasShadow=true;w.level = .floating
-        let content=NSView(frame:NSRect(origin:.zero,size:size));content.wantsLayer=true;content.layer?.cornerRadius=14;content.layer?.masksToBounds=true
-        let p=AVPlayer(url:url),layer=AVPlayerLayer(player:p);layer.frame=content.bounds;layer.videoGravity = .resizeAspect;content.layer?.addSublayer(layer)
-        let skip=NSButton(title:"跳过  Esc",target:self,action:#selector(finishIntro));skip.frame=NSRect(x:size.width-112,y:15,width:95,height:28);skip.bezelStyle = .inline;skip.contentTintColor = .gray;content.addSubview(skip)
-        w.contentView=content;w.skip={[weak self] in self?.finishIntro()};w.center();w.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
-        splash=w;player=p;done=completion
-        observer=NotificationCenter.default.addObserver(forName:.AVPlayerItemDidPlayToEndTime,object:p.currentItem,queue:.main){[weak self] _ in self?.finishIntro()}
-        failureObserver=NotificationCenter.default.addObserver(forName:.AVPlayerItemFailedToPlayToEndTime,object:p.currentItem,queue:.main){[weak self] _ in self?.finishIntro()}
-        splashTimer=Timer.scheduledTimer(withTimeInterval:12,repeats:false){[weak self] _ in self?.finishIntro()};p.play()
+    func presentSettings(refresh: Bool) {
+        window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
+        if refresh && !model.busy {model.refresh()}
     }
-    @objc func finishIntro() {
-        guard splash != nil else {return};player?.pause();splash?.orderOut(nil);splash=nil;player=nil;splashTimer?.invalidate();splashTimer=nil
-        if let o=observer {NotificationCenter.default.removeObserver(o)};observer=nil
-        if let o=failureObserver {NotificationCenter.default.removeObserver(o)};failureObserver=nil
-        let callback=done;done=nil;callback?()
+    @objc func showSettings() {presentSettings(refresh:true)}
+    @objc func previewIntro() {launch()}
+    @objc func launch() {
+        guard !model.busy else {return}
+        window.orderOut(nil)
+        model.armIntro { [weak self] result in
+            guard let self=self else {return}
+            if result["ok"] as? Bool == true {self.openCodex()}
+            else {self.presentSettings(refresh:false)}
+        }
     }
     func openCodex() {
         let running=NSRunningApplication.runningApplications(withBundleIdentifier:"com.openai.codex").filter{!$0.isTerminated}
         if let app=running.first {
-            app.activate(options:[.activateAllWindows,.activateIgnoringOtherApps]);model.apply();return
+            app.activate(options:[.activateAllWindows,.activateIgnoringOtherApps]);model.refresh();return
         }
         let config=NSWorkspace.OpenConfiguration();config.activates=true
         let profile=URL(fileURLWithPath:NSHomeDirectory()).appendingPathComponent("Library/Application Support/LiXingyunCodex/CodexProfile")
         do {try FileManager.default.createDirectory(at:profile,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])}
-        catch {model.status="无法建立本地界面配置：\(error.localizedDescription)";showSettings();return}
+        catch {model.status="无法建立本地界面配置：\(error.localizedDescription)";model.introPending=false;model.introPhase="error";presentSettings(refresh:false);return}
         config.arguments=["--user-data-dir=\(profile.path)","--remote-debugging-address=127.0.0.1","--remote-debugging-port=9222"]
         NSWorkspace.shared.openApplication(at:targetURL,configuration:config){[weak self] _,error in
-            DispatchQueue.main.async {guard let self=self else{return};if let e=error {self.model.status="无法打开 Codex：\(e.localizedDescription)";self.showSettings()} else {self.model.apply()}}
+            DispatchQueue.main.async {guard let self=self else{return};if let e=error {self.model.status="无法打开 Codex：\(e.localizedDescription)";self.model.introPending=false;self.model.introPhase="error";self.presentSettings(refresh:false)} else {self.model.refresh()}}
         }
     }
     @objc func pause() {model.pause()}
     @objc func restore() {model.restore();showSettings()}
-    @objc func about() {let a=NSAlert();a.messageText="星云 · Codex 1.0";a.informativeText="李星云启动动画与动态壁纸\n五套私人素材 · 本机运行\n基于 Codex Dynamic Skin 的 MIT 渲染器。";a.runModal()}
+    @objc func about() {let a=NSAlert();a.messageText="星云 · Codex 1.1";a.informativeText="Codex 窗口内开场与动态壁纸\n五套私人素材 · 本机运行\n基于 Codex Dynamic Skin 的 MIT 渲染器。";a.runModal()}
     @objc func quit() {NSApp.terminate(nil)}
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool {false}
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows:Bool)->Bool {showSettings();return true}
-    func applicationWillTerminate(_ notification:Notification) {connectionTimer?.invalidate();model.stopWatch();player?.pause()}
+    func applicationWillTerminate(_ notification:Notification) {connectionTimer?.invalidate();model.stopWatch()}
 }
 
 if CommandLine.arguments.contains("--verify") {

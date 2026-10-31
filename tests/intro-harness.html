@@ -1,0 +1,75 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Li Xingyun Intro — Isolated Browser QA</title>
+<style>
+*{box-sizing:border-box}html{color-scheme:dark;background:#111318}body{margin:0;background:transparent;color:#eef1f3;font:14px system-ui;height:100vh;overflow:auto}#codex-dream-skin-media{position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;object-position:50% 50%;z-index:-1;opacity:.75}main{padding:32px;max-width:1060px;margin:auto;position:relative}.card{padding:20px;margin:18px 0;background:rgba(13,17,24,.9);border:1px solid #394452;border-radius:16px}button{color:#fff;background:#7c3343;border:1px solid #a86773;padding:10px 15px;border-radius:8px;cursor:pointer;margin:0 6px 8px 0}button:disabled{opacity:.4;cursor:wait}h1{font:600 26px Georgia;margin-bottom:6px}p{color:#bbc5cf;line-height:1.6}input{padding:10px;border-radius:6px;border:1px solid #758599;background:#171e29;color:#fff;width:100%}#results{white-space:pre-wrap;font:12px ui-monospace,monospace;line-height:1.55;max-height:48vh;overflow:auto}.pass{color:#a6e4bd}.fail{color:#ff9eab}small{color:#b6c5d3}
+</style>
+<video id="codex-dream-skin-media" src="/Assets/media/wind-loop.mp4" muted autoplay loop playsinline></video>
+<main><h1>Isolated browser QA</h1><p>This is a test canvas for our own intro renderer. It does not connect to or display a user's Codex.</p>
+<div class="card"><button id="run">Run browser QA</button><button id="visual">Play full transition</button><button id="esc">Start Esc case</button><button id="reset">Restore test canvas</button><small id="state">Ready</small><input id="focus-return" value="Focus should return here after the transition" aria-label="Focus return fixture"></div>
+<div class="card"><div id="results" aria-live="polite">No test run yet.</div></div></main>
+<script type="module">
+const results=document.getElementById('results'),state=document.getElementById('state'),wallpaper=document.getElementById('codex-dream-skin-media');
+const record={startedAt:null,finishedAt:null,cases:[],environment:{userAgent:navigator.userAgent,width:innerWidth,height:innerHeight}};
+const created=new Set(),revoked=new Set();
+const nativeCreate=URL.createObjectURL.bind(URL),nativeRevoke=URL.revokeObjectURL.bind(URL);
+URL.createObjectURL=value=>{const url=nativeCreate(value);created.add(url);return url};
+URL.revokeObjectURL=url=>{revoked.add(url);return nativeRevoke(url)};
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function assert(condition,message){if(!condition)throw new Error(message)}
+async function until(check,timeout=10000){const end=performance.now()+timeout;while(performance.now()<end){const value=check();if(value)return value;await wait(30)}throw new Error('Timed out waiting for renderer state')}
+async function controller(config={}){
+  const {installIntro}=await import('/runtime/intro-renderer.mjs');
+  installIntro({token:crypto.randomUUID(),mediaSize:media.length,mediaMime:'video/mp4',handoffTime:1.2,fadeMs:250,appearance:'dark',syncBackground:true,backgroundRequired:false,...config});
+  return window.__LIXINGYUN_INTRO_STATE__;
+}
+let media;
+async function load(){if(media)return;state.textContent='Loading real video fixture…';media=new Uint8Array(await(await fetch('/Assets/originals/wind.mp4')).arrayBuffer());await wallpaper.play();await until(()=>wallpaper.readyState>=2);state.textContent='Ready'}
+function encoded(bytes){let binary='';for(const b of bytes)binary+=String.fromCharCode(b);return btoa(binary)}
+function transfer(c,bytes=media){assert(c.beginMedia({mime:'video/mp4',size:bytes.length})===true,'beginMedia rejected correct fixture');for(let i=0;i<bytes.length;i+=192*1024)assert(c.appendMedia(encoded(bytes.subarray(i,i+192*1024)))===true,'appendMedia failed');assert(c.commitMedia()===true,'commitMedia rejected complete fixture')}
+async function start(c){await c.start();return until(()=>c.probe().phase==='playing'||c.probe().phase==='revealing')}
+async function done(){return until(()=>!document.getElementById('lixingyun-codex-intro')&&window.__LIXINGYUN_INTRO_LAST__?.phase==='done'?window.__LIXINGYUN_INTRO_LAST__:null,15000)}
+function write(){results.textContent=JSON.stringify(record,null,2)}
+async function runCase(name,body){try{const evidence=await body();record.cases.push({name,pass:true,evidence});}catch(error){record.cases.push({name,pass:false,error:String(error)});window.__LIXINGYUN_INTRO_STATE__?.cleanup('test-failed');}write()}
+async function suite(){
+ document.getElementById('run').disabled=true;record.startedAt=new Date().toISOString();record.cases=[];await load();
+ await runCase('real movie plays inside viewport and crossfades to the existing canvas',async()=>{
+  const previous=document.getElementById('focus-return');previous.focus();const c=await controller({handoffTime:1.2});transfer(c);await start(c);
+  const host=document.getElementById('lixingyun-codex-intro'),bounds=host.getBoundingClientRect(),video=host.shadowRoot.querySelector('video');
+  assert(Math.abs(bounds.width-innerWidth)<2&&Math.abs(bounds.height-innerHeight)<2,'Overlay does not cover viewport');
+  assert(video.readyState>=2,'Real video did not decode');await wait(300);assert(c.probe().frames>0,'No decoded movie frames');
+  const finished=await done();assert(!finished.error,'Renderer reported playback error');assert(wallpaper.isConnected&&wallpaper.readyState>=2,'Wallpaper removed by handoff');
+  assert(document.activeElement===previous,'Focus was not returned');return {bounds:{width:bounds.width,height:bounds.height},finished};
+ });
+ await runCase('same request token does not replay after completion',async()=>{
+  const token=window.__LIXINGYUN_INTRO_LAST__.token;const {installIntro}=await import('/runtime/intro-renderer.mjs');
+  installIntro({token,mediaSize:media.length,mediaMime:'video/mp4',handoffTime:1.2,fadeMs:250,backgroundRequired:false});await wait(100);
+  assert(!document.getElementById('lixingyun-codex-intro'),'Completed token replayed');return {token};
+ });
+ await runCase('background autofocus cannot receive hidden typing during the modal',async()=>{
+  const c=await controller({handoffTime:5});transfer(c);await start(c);document.getElementById('focus-return').focus();
+  assert(document.activeElement===document.getElementById('lixingyun-codex-intro'),'Background input stole focus');
+  c.finish('skip');return await done();
+ });
+ await runCase('restore during preparing removes the blocking layer',async()=>{
+  const c=await controller();assert(document.getElementById('lixingyun-codex-intro'),'Preparing layer missing');c.cleanup('restore');await until(()=>!document.getElementById('lixingyun-codex-intro'));return c.probe();
+ });
+ await runCase('a second request replaces and cleans up the first request',async()=>{
+  const a=await controller({handoffTime:5});transfer(a);await start(a);const b=await controller();
+  assert(a.probe().phase==='done','Replaced request is still active');assert(document.querySelectorAll('#lixingyun-codex-intro').length===1,'Duplicate overlays');
+  b.cleanup('restore');await until(()=>!document.getElementById('lixingyun-codex-intro'));return {first:a.probe(),second:b.probe()};
+ });
+ await runCase('skip during real playback returns to the existing wallpaper',async()=>{
+  const c=await controller({handoffTime:5});transfer(c);await start(c);c.finish('skip');const finished=await done();assert(finished.reason==='skip','Skip reason was not retained');return finished;
+ });
+ await runCase('incomplete media is rejected without silently committing',async()=>{
+  const c=await controller();assert(c.beginMedia({mime:'video/mp4',size:media.length})===true,'Preparation failed');assert(c.appendMedia(encoded(media.subarray(0,64)))===true,'Small chunk failed');assert(c.commitMedia()===false,'Truncated movie committed');c.cleanup('restore');return {rejected:true};
+ });
+ await runCase('all transient Blob URLs are released',async()=>{
+  await wait(200);const unreleased=[...created].filter(url=>!revoked.has(url));assert(unreleased.length===0,'Leaked '+unreleased.length+' object URLs');return {created:created.size,revoked:revoked.size};
+ });
+ record.finishedAt=new Date().toISOString();record.pass=record.cases.every(c=>c.pass);write();state.textContent=record.pass?'All browser cases passed':'Some browser cases failed';await fetch('/results',{method:'POST',body:JSON.stringify(record)});document.getElementById('run').disabled=false;
+}
+document.getElementById('run').onclick=()=>suite().catch(error=>{state.textContent=String(error);document.getElementById('run').disabled=false});
+document.getElementById('visual').onclick=async()=>{await load();const c=await controller({handoffTime:6.5,fadeMs:700});transfer(c);await start(c);state.textContent='Full transition running';const finished=await done();state.textContent='Full transition completed';results.textContent=JSON.stringify(finished,null,2)};
+document.getElementById('esc').onclick=async()=>{await load();const c=await controller({handoffTime:7.15,fadeMs:250});transfer(c);await start(c);state.textContent='Press Escape to skip';const finished=await done();state.textContent='Esc result: '+finished.reason;results.textContent=JSON.stringify(finished,null,2)};
+document.getElementById('reset').onclick=()=>window.__LIXINGYUN_INTRO_STATE__?.cleanup('restore');
+</script></html>

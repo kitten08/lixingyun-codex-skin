@@ -7,16 +7,20 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {createHash, randomUUID} from 'node:crypto';
 import {Script} from 'node:vm';
+import {installIntro} from './intro-renderer.mjs';
+import {installImageLayer} from './wallpaper-layer.mjs';
 
 const exec = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const STATE_KEY = '__CODEX_DREAM_SKIN_STATE__';
 const SUPPORT = process.env.LIXINGYUN_STATE_DIR || path.join(os.homedir(), 'Library/Application Support/LiXingyunCodex');
 const STATE_FILE = path.join(SUPPORT, 'appearance.json');
-const DEFAULT = {enabled:false, preset:'wind', opacity:0.70, paused:false, revision:''};
+const DEFAULT = {enabled:false, preset:'wind', startup:'wind', opacity:0.70, paused:false, revision:'',introRequest:null};
 const MAX_MEDIA = 64 * 1024 * 1024;
 const WAITING = '已保存。当前 Codex 尚未开放背景连接；请在任务结束后完全退出 Codex，再从「星云 · Codex」启动。';
 const PORT = 9222;
+const INTRO_KEY='__LIXINGYUN_INTRO_STATE__';
+const INTRO_TTL=120000;
 
 export function parseArgs(args) {
   const out = {command:args[0] || 'status', port:PORT};
@@ -38,11 +42,42 @@ export async function readState() {
 }
 async function saveState(patch) {
   const next={...await readState(),...patch,revision:randomUUID()};
+  await writeState(next);
+  return next;
+}
+async function writeState(next) {
   await fs.mkdir(SUPPORT,{recursive:true,mode:0o700});
   const tmp=STATE_FILE+'.'+process.pid+'.tmp';
   await fs.writeFile(tmp,JSON.stringify(next,null,2)+'\n',{mode:0o600});
   await fs.rename(tmp,STATE_FILE);
-  return next;
+}
+export function pendingIntro(state,now=Date.now()) {
+  const request=state.introRequest;
+  return Boolean(state.enabled && request?.status==='pending' && /^[a-z0-9-]{1,128}$/i.test(request.token || '') && Number.isFinite(request.queuedAt) && now>=request.queuedAt && now-request.queuedAt<INTRO_TTL);
+}
+async function markIntro(token,status) {
+  const current=await readState();
+  if(current.introRequest?.token!==token)return;
+  await writeState({...current,introRequest:{...current.introRequest,status,updatedAt:Date.now()}});
+}
+async function withMutationLock(action) {
+  await fs.mkdir(SUPPORT,{recursive:true,mode:0o700});
+  const lockPath=path.join(SUPPORT,'renderer-operation.lock'),token=randomUUID();
+  let handle;
+  for(let attempt=0;attempt<2;attempt++) {
+    try{handle=await fs.open(lockPath,'wx',0o600);await handle.writeFile(JSON.stringify({pid:process.pid,token}));break;}
+    catch(error){
+      if(error.code!=='EEXIST')throw error;
+      let stale=false;
+      try{const owner=JSON.parse(await fs.readFile(lockPath,'utf8'));try{process.kill(owner.pid,0);}catch(e){stale=e.code==='ESRCH';}}
+      catch{try{stale=Date.now()-(await fs.stat(lockPath)).mtimeMs>10000;}catch{stale=true;}}
+      if(!stale)return [];
+      await fs.unlink(lockPath).catch(()=>{});
+    }
+  }
+  if(!handle)return [];
+  try{return await action();}
+  finally{await handle.close();try{if(JSON.parse(await fs.readFile(lockPath,'utf8')).token===token)await fs.unlink(lockPath);}catch{}}
 }
 export async function assetFile(root, relative) {
   if(typeof relative!=='string' || !relative || path.isAbsolute(relative)) throw new Error('素材路径无效');
@@ -146,9 +181,9 @@ async function targets(port) {
   const response=await fetch(`http://127.0.0.1:${port}/json/list`,{redirect:'error',signal:AbortSignal.timeout(2000)});
   if(!response.ok)return [];
   const result=await response.json();
-  return Array.isArray(result)?result.filter(t=>validTarget(t,port)):[];
+  return Array.isArray(result)?result.filter(t=>validTarget(t,port)).sort((a,b)=>Number(!new URL(a.url).pathname.endsWith('/index.html'))-Number(!new URL(b.url).pathname.endsWith('/index.html'))):[];
 }
-const PROBE=`(() => ({valid: location.protocol==='app:' && !!document.querySelector('main,[role="main"],[data-testid="app-shell-main"]'),theme:window.${STATE_KEY}?.themeId || null,revision:window.__LIXINGYUN_REVISION__ || null,video: (()=>{const v=document.getElementById('codex-dream-skin-media');return v?{ready:v.readyState,paused:v.paused,time:v.currentTime,error:v.error?.message || null}:null})()}))()`;
+const PROBE=`(() => ({valid: location.protocol==='app:' && !!document.querySelector('main,[role="main"],[data-testid="app-shell-main"]'),hidden:document.hidden,version:window.${STATE_KEY}?.version || null,theme:window.${STATE_KEY}?.themeId || null,revision:window.__LIXINGYUN_REVISION__ || null,intro:window.${INTRO_KEY}?.probe() || window.__LIXINGYUN_INTRO_LAST__ || null,video: (()=>{const v=document.getElementById('codex-dream-skin-media');return v?{ready:v.readyState,paused:v.paused,time:v.currentTime,error:v.error?.message || null}:null})()}))()`;
 
 async function payload(root,preset,state) {
   const [template,css,poster]=await Promise.all([
@@ -162,7 +197,7 @@ async function payload(root,preset,state) {
   const mime=/\.jpe?g$/i.test(imagePath)?'image/jpeg':'image/png';
   const media=isVideo?await fs.readFile(preset.wallpaperPath):null;
   const theme={id:preset.id,name:preset.name,tagline:'你欲何为',quote:'你欲何为',brandSubtitle:'李星云 · CODEX',statusText:'',appearance:'auto',colorMode:'adaptive',artKey:createHash('sha256').update(art).digest('hex'),art:{focusX:0.72,focusY:0.5,safeArea:'none',taskMode:'full'},userTransparency:40,media:{type:isVideo?'video':'image',mime:'video/mp4',size:media?.length || 0,opacity:state.opacity}};
-  const substitutions={CSS:css,ART:`data:${mime};base64,${art.toString('base64')}`,THEME:theme,VERSION:'lixingyun-1.0.0',STYLE_REVISION:'lixingyun-1',PAYLOAD_REVISION:state.revision};
+  const substitutions={CSS:css,ART:`data:${mime};base64,${art.toString('base64')}`,THEME:theme,VERSION:'lixingyun-1.1.0',STYLE_REVISION:'lixingyun-1.1',PAYLOAD_REVISION:state.revision};
   let source=template;
   for(const [key,value]of Object.entries(substitutions))source=source.replace(`__DREAM_SKIN_${key}_JSON__`,()=>JSON.stringify(value));
   if(/__DREAM_SKIN_[A-Z0-9_]+_JSON__/.test(source))throw new Error('背景模板不完整');
@@ -172,17 +207,18 @@ async function payload(root,preset,state) {
 
 async function applySession(session,root,state,cache) {
   const probe=await session.evaluate(PROBE);
-  if(!probe?.valid)return {skipped:true};
   if(!state.enabled) {
-    await session.evaluate(`window.${STATE_KEY}?.cleanup(); delete window.__LIXINGYUN_REVISION__; true`);
+    await session.evaluate(`window.${INTRO_KEY}?.cleanup('restore'); window.__LIXINGYUN_WALLPAPER_LAYER__?.cleanup(); window.${STATE_KEY}?.cleanup(); delete window.__LIXINGYUN_REVISION__; delete window.__LIXINGYUN_USER_PAUSED__; true`);
     return {restored:true};
   }
-  if(probe.theme!==state.preset || probe.revision!==state.revision) {
-    const sameMedia=probe.theme===state.preset && probe.revision && cache.lastPreset===state.preset;
+  if(!probe?.valid)return {skipped:true};
+  if(probe.theme!==state.preset || probe.revision!==state.revision || probe.version!=='lixingyun-1.1.0') {
+    const sameMedia=probe.version==='lixingyun-1.1.0' && probe.theme===state.preset && probe.revision && cache.lastPreset===state.preset;
     if(!sameMedia) {
       const preset=await loadPreset(root,state.preset);
       const built=cache.revision===state.revision?cache.built:await payload(root,preset,state);
       cache.revision=state.revision;cache.built=built;
+      await session.evaluate('window.__LIXINGYUN_WALLPAPER_LAYER__?.cleanup(); true');
       await session.evaluate(built.source);
       if(built.media) {
         const begun=await session.evaluate(`window.${STATE_KEY}.beginMedia(${JSON.stringify({mime:'video/mp4',size:built.media.length})})`);
@@ -192,9 +228,9 @@ async function applySession(session,root,state,cache) {
           if(!await session.evaluate(`window.${STATE_KEY}.appendMedia(${JSON.stringify(chunk)})`))throw new Error('壁纸数据校验失败');
         }
         if(!await session.evaluate(`window.${STATE_KEY}.commitMedia()`))throw new Error('壁纸传输不完整');
-      }
+      } else await session.evaluate(`(${installImageLayer.toString()})()`);
     }
-    await session.evaluate(`window.${STATE_KEY}.setWallpaperReveal(${state.opacity}); window.${STATE_KEY}.setPaused(${Boolean(state.paused)}); window.__LIXINGYUN_REVISION__=${JSON.stringify(state.revision)}; true`);
+    await session.evaluate(`window.${STATE_KEY}.setWallpaperReveal(${state.opacity}); window.${STATE_KEY}.setPaused(${Boolean(state.paused)}); window.__LIXINGYUN_USER_PAUSED__=${Boolean(state.paused)}; window.__LIXINGYUN_REVISION__=${JSON.stringify(state.revision)}; true`);
     cache.lastPreset=state.preset;
   }
   return await session.evaluate(PROBE);
@@ -203,8 +239,55 @@ async function applySession(session,root,state,cache) {
 async function withTargets(options,action) {
   const list=await targets(options.port);
   const results=[];
-  for(const target of list){const session=await new Session(target.webSocketDebuggerUrl).open();try{results.push(await action(session));}finally{session.close();}}
+  for(const target of list){const session=await new Session(target.webSocketDebuggerUrl).open();try{results.push(await action(session,target));}finally{session.close();}}
   return results;
+}
+
+async function prepareIntro(session,root,state,cache) {
+  const request=state.introRequest;
+  let probe=await session.evaluate(`window.${INTRO_KEY}?.probe() || window.__LIXINGYUN_INTRO_LAST__ || null`);
+  if(probe?.token===request.token && probe.phase==='done'){await markIntro(request.token,'done');return;}
+  const startup=await loadPreset(root,request.startup);
+  if(cache.introFile?.id!==startup.id){const data=await fs.readFile(await assetFile(root,startup.startup));cache.introFile={id:startup.id,data};}
+  const data=cache.introFile.data;
+  if(probe?.token!==request.token) {
+    const config={token:request.token,mediaSize:data.length,mediaMime:'video/mp4',handoffTime:startup.introHandoff,fadeMs:700,appearance:startup.id.startsWith('white')?'light':'dark',syncBackground:request.startup===state.preset};
+    const expression=`(${installIntro.toString()})(${JSON.stringify(config)})`;
+    new Script(expression);
+    probe=await session.evaluate(expression);
+  }
+  if(!probe?.hasMedia && probe?.phase!=='done'){
+    if(!await session.evaluate(`window.${INTRO_KEY}.beginMedia(${JSON.stringify({mime:'video/mp4',size:data.length})})`))throw new Error('开场媒体初始化失败');
+    for(let i=0;i<data.length;i+=384*1024){const chunk=data.subarray(i,i+384*1024).toString('base64');if(!await session.evaluate(`window.${INTRO_KEY}.appendMedia(${JSON.stringify(chunk)})`))throw new Error('开场媒体传输失败');}
+    if(!await session.evaluate(`window.${INTRO_KEY}.commitMedia()`))throw new Error('开场媒体不完整');
+  }
+}
+
+async function processAppearance(options,root,state,cache) {
+  return withMutationLock(()=>processAppearanceUnlocked(options,root,state,cache));
+}
+async function processAppearanceUnlocked(options,root,state,cache) {
+  let assigned=false;
+  const pending=pendingIntro(state);
+  const expired=state.introRequest?.status==='pending' && !pending;
+  if(expired)await markIntro(state.introRequest.token,'expired');
+  return withTargets(options,async(session,target)=>{
+    const before=await session.evaluate(PROBE);
+    const main=before.valid || new URL(target.url).pathname.endsWith('/index.html');
+    const introHere=pending && main && !assigned;
+    if(introHere){assigned=true;await prepareIntro(session,root,state,cache);}
+    if(expired)await session.evaluate(`window.${INTRO_KEY}?.cleanup('expired'); true`);
+    const result=await applySession(session,root,state,cache);
+    if(introHere){
+      const latest=await readState();
+      if(!latest.enabled || latest.introRequest?.token!==state.introRequest.token){await session.evaluate(`window.${INTRO_KEY}?.cleanup('cancelled'); true`);return result;}
+      await session.evaluate(`window.${INTRO_KEY}?.start(); true`);
+      const intro=await session.evaluate(`window.${INTRO_KEY}?.probe() || window.__LIXINGYUN_INTRO_LAST__ || null`);
+      if(intro?.token===state.introRequest.token && ['playing','revealing','done'].includes(intro.phase))await markIntro(state.introRequest.token,intro.phase==='done'?'done':'started');
+      return {...result,intro};
+    }
+    return result;
+  });
 }
 
 async function run(options) {
@@ -218,24 +301,41 @@ async function run(options) {
     let stopped=false;process.on('SIGTERM',()=>stopped=true);process.on('SIGINT',()=>stopped=true);
     const parentPid=process.ppid;
     const cache={};
-    while(!stopped && process.ppid===parentPid && parentPid>1){try{const state=await readState();await withTargets(options,s=>applySession(s,root,state,cache));}catch(e){process.stderr.write(`background: ${e.message}\n`);}await new Promise(r=>setTimeout(r,2500));}
+    let lastRevision=null,lastScan=0;
+    while(!stopped && process.ppid===parentPid && parentPid>1){
+      try{const state=await readState();if(state.revision!==lastRevision || pendingIntro(state) || Date.now()-lastScan>2500){await processAppearance(options,root,state,cache);lastRevision=state.revision;lastScan=Date.now();}}
+      catch(e){process.stderr.write(`background: ${e.message}\n`);}
+      await new Promise(r=>setTimeout(r,125));
+    }
     return {ok:true,message:'背景连接已停止'};
   }
   if(options.command==='status') {
     const state=await readState();
     const results=await withTargets(options,s=>s.evaluate(PROBE));
     const connected=results.some(r=>r.valid);
-    return {ok:true,connected,enabled:state.enabled,preset:state.preset,paused:state.paused,opacity:state.opacity,results,message:connected?'Codex 背景已连接':'等待 Codex 背景连接'};
+    const intro=results.map(r=>r.intro).find(r=>r?.token===state.introRequest?.token);
+    return {ok:true,connected,enabled:state.enabled,preset:state.preset,startup:state.startup,paused:state.paused,opacity:state.opacity,introPending:pendingIntro(state),introPhase:intro?.phase || (pendingIntro(state)?'queued':'done'),results,message:connected?'Codex 背景已连接':'等待 Codex 背景连接'};
   }
   let state;
   switch(options.command){
+    case 'intro':
+    case 'arm-intro':{
+      const startup=options.startup || options.preset;
+      await loadPreset(root,options.preset);await loadPreset(root,startup);
+      state=await saveState({enabled:true,preset:options.preset,startup,opacity:fraction(options.opacity ?? .7),paused:false,introRequest:{token:randomUUID(),startup,status:'pending',queuedAt:Date.now()}});
+      if(options.command==='arm-intro')return {ok:true,introPending:true,introPhase:'queued',enabled:true,message:'已准备 Codex 窗口内开场'};
+      const results=await processAppearance(options,root,state,{});
+      const intro=results.map(r=>r.intro).find(Boolean);
+      return {ok:true,connected:results.some(r=>!r.skipped),introPending:!intro || intro.phase==='preparing',introPhase:intro?.phase || 'queued',enabled:true,message:intro?'正在 Codex 窗口内播放开场':'已准备开场，等待 Codex 窗口'};
+    }
+    case 'cancel-intro':state=await saveState({introRequest:null});await withTargets(options,s=>s.evaluate(`window.${INTRO_KEY}?.cleanup('cancelled'); true`));return {ok:true,introPending:false,introPhase:'done',message:'已跳过开场'};
     case 'apply':await loadPreset(root,options.preset);state=await saveState({enabled:true,preset:options.preset,opacity:fraction(options.opacity ?? .7),paused:false});break;
     case 'pause':if(!['true','false'].includes(options.paused))throw new Error('暂停参数无效');state=await saveState({paused:options.paused==='true'});break;
     case 'opacity':state=await saveState({opacity:fraction(options.value)});break;
-    case 'restore':state=await saveState({enabled:false});break;
+    case 'restore':state=await saveState({enabled:false,introRequest:null});break;
     default:throw new Error('未知命令');
   }
-  const results=await withTargets(options,s=>applySession(s,root,state,{}));
+  const results=await processAppearance(options,root,state,{});
   const connected=results.some(r=>!r.skipped);
   return {ok:connected || options.command==='restore',connected,enabled:state.enabled,message:options.command==='restore'?'已恢复默认，自动背景已关闭':connected?'已应用到 Codex':WAITING};
 }
