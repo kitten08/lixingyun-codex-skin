@@ -216,8 +216,9 @@ async function run(options) {
   }
   if(options.command==='watch') {
     let stopped=false;process.on('SIGTERM',()=>stopped=true);process.on('SIGINT',()=>stopped=true);
+    const parentPid=process.ppid;
     const cache={};
-    while(!stopped){try{const state=await readState();await withTargets(options,s=>applySession(s,root,state,cache));}catch(e){process.stderr.write(`background: ${e.message}\n`);}await new Promise(r=>setTimeout(r,2500));}
+    while(!stopped && process.ppid===parentPid && parentPid>1){try{const state=await readState();await withTargets(options,s=>applySession(s,root,state,cache));}catch(e){process.stderr.write(`background: ${e.message}\n`);}await new Promise(r=>setTimeout(r,2500));}
     return {ok:true,message:'背景连接已停止'};
   }
   if(options.command==='status') {

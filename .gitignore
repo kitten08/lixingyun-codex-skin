@@ -2,8 +2,19 @@ build/
 .DS_Store
 *.log
 *.tmp
+*.restore-tmp
 .env
 .env.*
 node_modules/
 compat-profile/
 appearance.json
+
+# Restored automatically from AssetParts
+Assets/media/white-wind-loop.mp4
+Assets/media/wind-loop.mp4
+Assets/originals/line-reveal.mp4
+Assets/originals/still.mp4
+Assets/originals/white-art.png
+Assets/originals/white-still.gif
+Assets/originals/white-wind.gif
+Assets/originals/wind.mp4

@@ -1,0 +1,236 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "Assets/media/white-wind-loop.mp4",
+      "bytes": 9499703,
+      "sha256": "7bc3b4c54e230b26ee150a5c1f8745759a2bbacdd6ce27bbdd708304e8cc1481",
+      "parts": [
+        {
+          "name": "assets_media_white-wind-loop.mp4.part001",
+          "bytes": 2359296,
+          "sha256": "8b9eb3a50205e446629e09fd3609527d819870dacae91d13fe32f23b6142a9ce"
+        },
+        {
+          "name": "assets_media_white-wind-loop.mp4.part002",
+          "bytes": 2359296,
+          "sha256": "c04cc2f76b1b601f591274766b5865abb19e2691f6a4e838bceea1121bdcdffd"
+        },
+        {
+          "name": "assets_media_white-wind-loop.mp4.part003",
+          "bytes": 2359296,
+          "sha256": "3c4fdc603e5b3c0586d1c2a8bf3a03baafd456a89f65121d09408752afb85cbf"
+        },
+        {
+          "name": "assets_media_white-wind-loop.mp4.part004",
+          "bytes": 2359296,
+          "sha256": "f72603042394beec4959dcdc58ef6f17b8fab4f6133acd13cf76f27db31e5444"
+        },
+        {
+          "name": "assets_media_white-wind-loop.mp4.part005",
+          "bytes": 62519,
+          "sha256": "5ec8ef33f9f73f8ad9022a0064d710a9caf83f149227ebdfa91b8a1694800168"
+        }
+      ]
+    },
+    {
+      "path": "Assets/media/wind-loop.mp4",
+      "bytes": 9779476,
+      "sha256": "b5a8d2cfbfc922e3039953a2c588e646ce9bef54f16e4a9852de786cb6693df8",
+      "parts": [
+        {
+          "name": "assets_media_wind-loop.mp4.part001",
+          "bytes": 2359296,
+          "sha256": "4cc08b0de6b19fa30697ca705bc3d731d67a2ed54e904f9b0ea848b2baedce3e"
+        },
+        {
+          "name": "assets_media_wind-loop.mp4.part002",
+          "bytes": 2359296,
+          "sha256": "31ccb99be8a36f3f6be5aeb68629e2a0e3e4930d96fbad3837a36ccfb5803974"
+        },
+        {
+          "name": "assets_media_wind-loop.mp4.part003",
+          "bytes": 2359296,
+          "sha256": "e43eac77b51d0ce8c3a284f97b30652f329f1c19dc08acef4ab7d7bdce47ce88"
+        },
+        {
+          "name": "assets_media_wind-loop.mp4.part004",
+          "bytes": 2359296,
+          "sha256": "58e42997184af245497fe5eb87a2e8c4cd1da01f6a4b9cd0f1e4f63b10f63b90"
+        },
+        {
+          "name": "assets_media_wind-loop.mp4.part005",
+          "bytes": 342292,
+          "sha256": "8269429b1f79fd88af4f00d33bb6d37a1764c9bb33a05a82db1440ad720569b2"
+        }
+      ]
+    },
+    {
+      "path": "Assets/originals/line-reveal.mp4",
+      "bytes": 8201918,
+      "sha256": "b9ecd5676ebd05477a2c6db0f391fd869064a3477590436a37160c63b640b747",
+      "parts": [
+        {
+          "name": "assets_originals_line-reveal.mp4.part001",
+          "bytes": 2359296,
+          "sha256": "43c5548dd2bdfd858fd2f2e6716a363e976d6608ddf851abe269295272c12708"
+        },
+        {
+          "name": "assets_originals_line-reveal.mp4.part002",
+          "bytes": 2359296,
+          "sha256": "9242ad4433e42143db15d6a027bd89a78ac1be079e7930b864a350482e0e19d4"
+        },
+        {
+          "name": "assets_originals_line-reveal.mp4.part003",
+          "bytes": 2359296,
+          "sha256": "2d4832c0f798348af7ffb2315abebb2b8523d43413a69bb807bbfff10e441570"
+        },
+        {
+          "name": "assets_originals_line-reveal.mp4.part004",
+          "bytes": 1124030,
+          "sha256": "6845d3d101379090e616b5024177e8ee13cbdfab62963fa7e7a7566a9a3bf621"
+        }
+      ]
+    },
+    {
+      "path": "Assets/originals/still.mp4",
+      "bytes": 7606667,
+      "sha256": "7c0e8709f1b713d7bf07c4995d1e111b52617887c1c44d953600fa262df069a4",
+      "parts": [
+        {
+          "name": "assets_originals_still.mp4.part001",
+          "bytes": 2359296,
+          "sha256": "6d008343b3c69e8969c539f26309ce2a5f0521d6ef7a1c33b7293afb38e57a2b"
+        },
+        {
+          "name": "assets_originals_still.mp4.part002",
+          "bytes": 2359296,
+          "sha256": "ebc3a4ef1b21ae4725813a6aca40c55f5b8d8b41ca490c85e8d77cf74e853757"
+        },
+        {
+          "name": "assets_originals_still.mp4.part003",
+          "bytes": 2359296,
+          "sha256": "d6de516b278bfe94eb2fc210da9cc39f22cca2247cbe63ea22196621f512a4de"
+        },
+        {
+          "name": "assets_originals_still.mp4.part004",
+          "bytes": 528779,
+          "sha256": "fa322ee77a6fd85a9342be88ff8fbb837fb372c45b97e92cdd892ab88b455668"
+        }
+      ]
+    },
+    {
+      "path": "Assets/originals/white-art.png",
+      "bytes": 2431818,
+      "sha256": "645efb584b95ceeb28d1257af0ce495a91a846200cf27c702f89722f262614fc",
+      "parts": [
+        {
+          "name": "assets_originals_white-art.png.part001",
+          "bytes": 2359296,
+          "sha256": "5be1483cc77c514e14350dbd2191ab9c9e3b9984a612d95aff5cbef32e92cbcd"
+        },
+        {
+          "name": "assets_originals_white-art.png.part002",
+          "bytes": 72522,
+          "sha256": "8c5ace23120826f6cf5610edccd2aa7407a46a0839a1ff0f6144f5a26f5b921e"
+        }
+      ]
+    },
+    {
+      "path": "Assets/originals/white-still.gif",
+      "bytes": 2449992,
+      "sha256": "9ee8f8ca382bf7bd8229ec1d990055431c6d5ff061792caf58654132d2dc2a73",
+      "parts": [
+        {
+          "name": "assets_originals_white-still.gif.part001",
+          "bytes": 2359296,
+          "sha256": "18b3dd843bf87aba25e5ea507f0a42d7863775e7a756c975fe93bdf0b6e81741"
+        },
+        {
+          "name": "assets_originals_white-still.gif.part002",
+          "bytes": 90696,
+          "sha256": "acd3a6094d8c52ee209cf29604c3e94a11315c6a3e43df77df72096d15a53e5c"
+        }
+      ]
+    },
+    {
+      "path": "Assets/originals/white-wind.gif",
+      "bytes": 17148137,
+      "sha256": "c0965034ae0d2bb8a671063593da436c3a4e14156f4a692c65848d415bfce49c",
+      "parts": [
+        {
+          "name": "assets_originals_white-wind.gif.part001",
+          "bytes": 2359296,
+          "sha256": "53c5dff57161d4d855c106cc3446709e4c477bdd1d390eb13f83864b024082ce"
+        },
+        {
+          "name": "assets_originals_white-wind.gif.part002",
+          "bytes": 2359296,
+          "sha256": "9c3ec16ce38e9d5eed90d3c2b67cebc077143752b37380258650ef5e8605ede3"
+        },
+        {
+          "name": "assets_originals_white-wind.gif.part003",
+          "bytes": 2359296,
+          "sha256": "643feda74384112887d63da9cbb802132d9477fa876abcc3fad37be795456d65"
+        },
+        {
+          "name": "assets_originals_white-wind.gif.part004",
+          "bytes": 2359296,
+          "sha256": "131d50ed60e8d522ab55f186d6aa5d30d9a00ce32992f042e7678a09551284a3"
+        },
+        {
+          "name": "assets_originals_white-wind.gif.part005",
+          "bytes": 2359296,
+          "sha256": "2415d3893809113021b8b104f717fe2fedb7d4b9481f6addf0325bd2ecfd9fe5"
+        },
+        {
+          "name": "assets_originals_white-wind.gif.part006",
+          "bytes": 2359296,
+          "sha256": "87a120d189d88455632f19f4aa74a5548bbb0204fb96bde2c6ad60f4efdd8794"
+        },
+        {
+          "name": "assets_originals_white-wind.gif.part007",
+          "bytes": 2359296,
+          "sha256": "be9f066efdeafbd66f6e2fcb5958576632b1921b90a6cf1d2dd921efaf8ddaf9"
+        },
+        {
+          "name": "assets_originals_white-wind.gif.part008",
+          "bytes": 633065,
+          "sha256": "bd16db10f4845017a516b7d47ab9be48d37d9bda2b2f9764fe2fe22b1c6682ef"
+        }
+      ]
+    },
+    {
+      "path": "Assets/originals/wind.mp4",
+      "bytes": 9576265,
+      "sha256": "ff931c7801cc57b8b9267ee81a862a96b0f448e395164962f8972defbd489982",
+      "parts": [
+        {
+          "name": "assets_originals_wind.mp4.part001",
+          "bytes": 2359296,
+          "sha256": "6377f7975f6810ecf966dea4050f93660cab7a12dd6caf1b2b179c74d4ea2f31"
+        },
+        {
+          "name": "assets_originals_wind.mp4.part002",
+          "bytes": 2359296,
+          "sha256": "55da06518b63ec74edb76f8aa41eeefa7faa03f0ac4eaa544dfdb8e940de1da0"
+        },
+        {
+          "name": "assets_originals_wind.mp4.part003",
+          "bytes": 2359296,
+          "sha256": "5e1420fb8873ae2d8cb8fb6c4bd57cb182d83a100d39401bcec2c2676737864d"
+        },
+        {
+          "name": "assets_originals_wind.mp4.part004",
+          "bytes": 2359296,
+          "sha256": "364f44623969d312b48f1a78d3941bb8ac2b2ddb8c17294473e8b9581a750672"
+        },
+        {
+          "name": "assets_originals_wind.mp4.part005",
+          "bytes": 139081,
+          "sha256": "9d1ebf62fe5bad2e4d8153e208f9cbbeb0d2f83f51410abc6230cdef0dd6e9e2"
+        }
+      ]
+    }
+  ]
+}

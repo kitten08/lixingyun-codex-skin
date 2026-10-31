@@ -180,12 +180,17 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var failureObserver: NSObjectProtocol?
     var done: (() -> Void)?
     var splashTimer: Timer?
+    var connectionTimer: Timer?
     func applicationDidFinishLaunching(_ notification: Notification) {
         guard presets.count==5 else { let a=NSAlert();a.messageText="素材库不完整，请重新安装完整应用。";a.runModal();NSApp.terminate(nil);return }
         NSApp.setActivationPolicy(.regular)
         makeMenu()
         makeWindow()
         model.startWatch(); model.refresh()
+        connectionTimer = Timer.scheduledTimer(withTimeInterval:8,repeats:true) { [weak self] _ in
+            guard let self=self,self.window.isVisible,!self.model.busy else {return}
+            self.model.refresh()
+        }
         if CommandLine.arguments.contains("--preview") {previewIntro()}
         else if CommandLine.arguments.contains("--launch") || (defaults.bool(forKey:"hasOpened") && !CommandLine.arguments.contains("--settings")) {launch()}
         else {showSettings()}
@@ -210,7 +215,7 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.minSize=NSSize(width:1050,height:760);window.delegate=self;window.isReleasedWhenClosed=false
         window.contentView=NSHostingView(rootView:Gallery(model:model,intro:{[weak self] in self?.previewIntro()},launch:{[weak self] in self?.launch()}));window.center()
     }
-    @objc func showSettings() {window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)}
+    @objc func showSettings() {window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true);if !model.busy {model.refresh()}}
     @objc func previewIntro() {playIntro { [weak self] in self?.showSettings() }}
     @objc func launch() {model.save();window.orderOut(nil);playIntro { [weak self] in self?.openCodex() }}
     func playIntro(completion:@escaping()->Void) {
@@ -241,7 +246,10 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             app.activate(options:[.activateAllWindows,.activateIgnoringOtherApps]);model.apply();return
         }
         let config=NSWorkspace.OpenConfiguration();config.activates=true
-        config.arguments=["--remote-debugging-address=127.0.0.1","--remote-debugging-port=9222"]
+        let profile=URL(fileURLWithPath:NSHomeDirectory()).appendingPathComponent("Library/Application Support/LiXingyunCodex/CodexProfile")
+        do {try FileManager.default.createDirectory(at:profile,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])}
+        catch {model.status="无法建立本地界面配置：\(error.localizedDescription)";showSettings();return}
+        config.arguments=["--user-data-dir=\(profile.path)","--remote-debugging-address=127.0.0.1","--remote-debugging-port=9222"]
         NSWorkspace.shared.openApplication(at:targetURL,configuration:config){[weak self] _,error in
             DispatchQueue.main.async {guard let self=self else{return};if let e=error {self.model.status="无法打开 Codex：\(e.localizedDescription)";self.showSettings()} else {self.model.apply()}}
         }
@@ -252,7 +260,7 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func quit() {NSApp.terminate(nil)}
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool {false}
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows:Bool)->Bool {showSettings();return true}
-    func applicationWillTerminate(_ notification:Notification) {model.stopWatch();player?.pause()}
+    func applicationWillTerminate(_ notification:Notification) {connectionTimer?.invalidate();model.stopWatch();player?.pause()}
 }
 
 if CommandLine.arguments.contains("--verify") {

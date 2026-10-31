@@ -12,6 +12,8 @@
 
 背景通过仅限本机 `127.0.0.1:9222` 的 Chromium 调试连接注入。官方应用包及签名保持完整。此连接只在通过伴侣启动的 Codex 进程存活期间开放，同机其他进程也可能连接。完全退出 Codex，再直接打开官方应用即可结束此连接。恢复默认会清理渲染器背景并关闭自动重应用。Codex 更新后可能需要重新验证兼容性。
 
+为兼容当前 Codex 的本地连接启动方式，伴侣使用 `~/Library/Application Support/LiXingyunCodex/CodexProfile/` 保存独立的界面配置。首次可能需要重新选择界面偏好；启动的仍是已安装的官方 Codex，项目目录和 `~/.codex` 不会迁移。兼容验证使用了相同的独立配置启动方式。
+
 ## 五套素材
 
 | 预设 | 启动 | 背景 |
@@ -19,10 +21,10 @@
 | 墨影 · 线稿显现 | 原始 v2 MP4 | 完整显现后的静帧 |
 | 风起 · 你欲何为 | 原始 v3 风动 MP4 | 8 秒无字无缝风动循环 |
 | 静夜 · 你欲何为 | 原始 v4 无风动 MP4 | 「你欲何为」静帧 |
-| 宣纸 · 风动 | 原白底 GIF 按原时序转 MP4 | 白底动态循环 |
+| 宣纸 · 风动 | 原白底 GIF 按原时序转 MP4 | 独立白底无缝风动循环，保留文字 |
 | 留白 · 定格 | 原白底定格 GIF 转 MP4 | 白底定格画面 |
 
-原始五个文件完整保存在 `Assets/originals/`。仓库含私人角色素材，请保持仓库私有。
+原始五个文件完整还原后位于 `Assets/originals/`，已安装应用含完整资源。大文件在仓库的 `AssetParts/` 中无损分块保存，构建脚本自动拼回并校验 SHA-256，无需 Git LFS 或额外下载。仓库含私人角色素材，请保持仓库私有。
 
 ## 构建和验证
 
@@ -35,7 +37,11 @@ node --test tests/bridge.test.mjs
 node runtime/bridge.mjs validate --assets Assets
 ```
 
+若只需还原并检查五套素材，可单独运行 `node scripts/restore-assets.mjs`。
+
 `scripts/media.swift` 用 AVFoundation 将 GIF 转为 H.264，并从原视频抽取海报。预处理后的资源已保存，普通构建无需重新转码。
+
+`scripts/render-white-loop.swift` 保存白底持续风动的完整渲染源码，以 `Assets` 为参数并加上 `--loop` 可重新导出循环背景。
 
 ```sh
 swiftc -O scripts/media.swift -o /tmp/lixingyun-media

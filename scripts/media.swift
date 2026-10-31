@@ -44,7 +44,7 @@ func convertGIF(_ id: String) throws {
             let props = CGImageSourceCopyPropertiesAtIndex(source, i, nil) as? [CFString: Any]
             let gif = props?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
             elapsed += (gif?[kCGImagePropertyGIFUnclampedDelayTime] as? Double) ?? (gif?[kCGImagePropertyGIFDelayTime] as? Double) ?? 0.08
-            if i == Int(Double(count) * 0.7) { save(image, "posters/\(id).jpg") }
+            if i == (id == "white-still" ? count - 1 : Int(Double(count) * 0.7)) { save(image, "posters/\(id).jpg") }
         }
     }
     writer.endSession(atSourceTime: CMTime(seconds: elapsed, preferredTimescale: 600)); input.markAsFinished()

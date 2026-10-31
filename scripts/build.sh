@@ -5,6 +5,9 @@ PROJECT_ROOT="$PWD"
 BUILD_DIR="$PROJECT_ROOT/build"
 APP_DIR="$BUILD_DIR/星云 · Codex.app"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$BUILD_DIR/module-cache"
+NODE_BIN="/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node"
+if [ ! -x "$NODE_BIN" ]; then NODE_BIN="$(command -v node)"; fi
+"$NODE_BIN" scripts/restore-assets.mjs
 swiftc -O -target "$(uname -m)-apple-macosx13.0" -module-cache-path "$BUILD_DIR/module-cache" Sources/App.swift -o "$APP_DIR/Contents/MacOS/LiXingyunSkin"
 ditto Assets "$APP_DIR/Contents/Resources/Assets"
 ditto runtime "$APP_DIR/Contents/Resources/runtime"

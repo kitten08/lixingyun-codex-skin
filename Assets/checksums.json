@@ -5,6 +5,11 @@
     "sha256": "b7f72397e75ea7482784199b1e620fac431699d25384f037b952ff1fc459de3b"
   },
   {
+    "path": "Assets/media/white-wind-loop.mp4",
+    "bytes": 9499703,
+    "sha256": "7bc3b4c54e230b26ee150a5c1f8745759a2bbacdd6ce27bbdd708304e8cc1481"
+  },
+  {
     "path": "Assets/media/white-wind.mp4",
     "bytes": 5527209,
     "sha256": "80eacbd4537329a3c9068b2dab9585fe7f2055b5cd023501fe3ab2b9860ac3f8"
@@ -23,6 +28,11 @@
     "path": "Assets/originals/still.mp4",
     "bytes": 7606667,
     "sha256": "7c0e8709f1b713d7bf07c4995d1e111b52617887c1c44d953600fa262df069a4"
+  },
+  {
+    "path": "Assets/originals/white-art.png",
+    "bytes": 2431818,
+    "sha256": "645efb584b95ceeb28d1257af0ce495a91a846200cf27c702f89722f262614fc"
   },
   {
     "path": "Assets/originals/white-still.gif",
@@ -51,8 +61,8 @@
   },
   {
     "path": "Assets/posters/white-still.jpg",
-    "bytes": 203901,
-    "sha256": "6f43fb8f09d1f9664efa49ea647e4f300ed5aef6d5d05eb1297228a6b9cafaac"
+    "bytes": 228106,
+    "sha256": "42cb173873e41bc0fd56a32a39b8b62332d3babb6ce963283017a61d9e0294dc"
   },
   {
     "path": "Assets/posters/white-wind.jpg",
