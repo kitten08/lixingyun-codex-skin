@@ -1,0 +1,9 @@
+build/
+.DS_Store
+*.log
+*.tmp
+.env
+.env.*
+node_modules/
+compat-profile/
+appearance.json

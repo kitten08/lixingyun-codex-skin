@@ -1,0 +1,72 @@
+[
+  {
+    "path": "Assets/media/white-still.mp4",
+    "bytes": 1887722,
+    "sha256": "b7f72397e75ea7482784199b1e620fac431699d25384f037b952ff1fc459de3b"
+  },
+  {
+    "path": "Assets/media/white-wind.mp4",
+    "bytes": 5527209,
+    "sha256": "80eacbd4537329a3c9068b2dab9585fe7f2055b5cd023501fe3ab2b9860ac3f8"
+  },
+  {
+    "path": "Assets/media/wind-loop.mp4",
+    "bytes": 9779476,
+    "sha256": "b5a8d2cfbfc922e3039953a2c588e646ce9bef54f16e4a9852de786cb6693df8"
+  },
+  {
+    "path": "Assets/originals/line-reveal.mp4",
+    "bytes": 8201918,
+    "sha256": "b9ecd5676ebd05477a2c6db0f391fd869064a3477590436a37160c63b640b747"
+  },
+  {
+    "path": "Assets/originals/still.mp4",
+    "bytes": 7606667,
+    "sha256": "7c0e8709f1b713d7bf07c4995d1e111b52617887c1c44d953600fa262df069a4"
+  },
+  {
+    "path": "Assets/originals/white-still.gif",
+    "bytes": 2449992,
+    "sha256": "9ee8f8ca382bf7bd8229ec1d990055431c6d5ff061792caf58654132d2dc2a73"
+  },
+  {
+    "path": "Assets/originals/white-wind.gif",
+    "bytes": 17148137,
+    "sha256": "c0965034ae0d2bb8a671063593da436c3a4e14156f4a692c65848d415bfce49c"
+  },
+  {
+    "path": "Assets/originals/wind.mp4",
+    "bytes": 9576265,
+    "sha256": "ff931c7801cc57b8b9267ee81a862a96b0f448e395164962f8972defbd489982"
+  },
+  {
+    "path": "Assets/posters/line-reveal.jpg",
+    "bytes": 554646,
+    "sha256": "e51bd093b228400c0c58ceaebc96a96063905f9fcbabe0e7ca33a563074ec84e"
+  },
+  {
+    "path": "Assets/posters/still.jpg",
+    "bytes": 613411,
+    "sha256": "da8a653919f6a013bd71f5f949f939d3e6a44b8f6f52fd596236bdc6db520bff"
+  },
+  {
+    "path": "Assets/posters/white-still.jpg",
+    "bytes": 203901,
+    "sha256": "6f43fb8f09d1f9664efa49ea647e4f300ed5aef6d5d05eb1297228a6b9cafaac"
+  },
+  {
+    "path": "Assets/posters/white-wind.jpg",
+    "bytes": 291544,
+    "sha256": "161aaf1a5e265eb436300c8dc0f124c526cfc7d3ce2cdab57b5006976ec9f339"
+  },
+  {
+    "path": "Assets/posters/wind.jpg",
+    "bytes": 534494,
+    "sha256": "3853868ee753d11516882e19bfe0fade1da90f449fe1bbd9237b217cf2fa3586"
+  },
+  {
+    "path": "Sources/AppIcon.icns",
+    "bytes": 2230698,
+    "sha256": "ac16e41726afef462d63a87ccaf5ec168b5529834a03b7e2f8b7b243af0cfaca"
+  }
+]

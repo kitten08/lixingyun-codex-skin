@@ -1,0 +1,7 @@
+[
+  {"id":"line-reveal","name":"墨影 · 线稿显现","subtitle":"银色轮廓逐笔显现，再显出人物","startup":"originals/line-reveal.mp4","wallpaper":"posters/line-reveal.jpg","wallpaperType":"image","poster":"posters/line-reveal.jpg"},
+  {"id":"wind","name":"风起 · 你欲何为","subtitle":"发丝与烟雾风动，暗色无缝循环背景","startup":"originals/wind.mp4","wallpaper":"media/wind-loop.mp4","wallpaperType":"video","poster":"posters/wind.jpg"},
+  {"id":"still","name":"静夜 · 你欲何为","subtitle":"线稿显现后定格，暗色安静背景","startup":"originals/still.mp4","wallpaper":"posters/still.jpg","wallpaperType":"image","poster":"posters/still.jpg"},
+  {"id":"white-wind","name":"宣纸 · 风动","subtitle":"白底水墨，保留「你欲何为」与发丝动态","startup":"media/white-wind.mp4","wallpaper":"media/white-wind.mp4","wallpaperType":"video","poster":"posters/white-wind.jpg"},
+  {"id":"white-still","name":"留白 · 定格","subtitle":"白底无风动，适合轻盈安静的工作界面","startup":"media/white-still.mp4","wallpaper":"posters/white-still.jpg","wallpaperType":"image","poster":"posters/white-still.jpg"}
+]
