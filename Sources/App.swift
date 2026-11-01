@@ -248,6 +248,12 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             app.activate(options:[.activateAllWindows,.activateIgnoringOtherApps]);model.refresh();return
         }
         let config=NSWorkspace.OpenConfiguration();config.activates=true
+        if FileManager.default.fileExists(atPath:targetURL.appendingPathComponent("Contents/Resources/lixingyun-startup/manifest.json").path) {
+            NSWorkspace.shared.openApplication(at:targetURL,configuration:config){[weak self] _,error in
+                DispatchQueue.main.async {if let e=error {self?.model.status="无法打开 Codex：\(e.localizedDescription)"} else {self?.model.refresh()}}
+            }
+            return
+        }
         let profile=URL(fileURLWithPath:NSHomeDirectory()).appendingPathComponent("Library/Application Support/LiXingyunCodex/CodexProfile")
         do {try FileManager.default.createDirectory(at:profile,withIntermediateDirectories:true,attributes:[.posixPermissions:0o700])}
         catch {model.status="无法建立本地界面配置：\(error.localizedDescription)";model.introPending=false;model.introPhase="error";presentSettings(refresh:false);return}
@@ -258,7 +264,7 @@ final class Delegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     @objc func pause() {model.pause()}
     @objc func restore() {model.restore();showSettings()}
-    @objc func about() {let a=NSAlert();a.messageText="星云 · Codex 1.1";a.informativeText="Codex 窗口内开场与动态壁纸\n五套私人素材 · 本机运行\n基于 Codex Dynamic Skin 的 MIT 渲染器。";a.runModal()}
+    @objc func about() {let a=NSAlert();a.messageText="星云 · Codex 1.2";a.informativeText="官方入口自动开场与动态壁纸\n五套私人素材 · 本机运行\n基于 Codex Dynamic Skin 的 MIT 渲染器。";a.runModal()}
     @objc func quit() {NSApp.terminate(nil)}
     func applicationShouldTerminateAfterLastWindowClosed(_ sender:NSApplication)->Bool {false}
     func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows:Bool)->Bool {showSettings();return true}

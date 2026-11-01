@@ -40,6 +40,18 @@ export async function readState() {
   try {return {...DEFAULT,...JSON.parse(await fs.readFile(STATE_FILE,'utf8'))};}
   catch(e) {if(e.code==='ENOENT') return {...DEFAULT}; throw e;}
 }
+async function nativeSnapshot() {
+  try {
+    const status=JSON.parse(await fs.readFile(path.join(SUPPORT,'native-status.json'),'utf8'));
+    if(status.mode!=='native'||!Number.isInteger(status.pid)||Date.now()-status.updatedAt>5000||status.updatedAt>Date.now()+1000)return null;
+    const appPath=await fs.realpath('/Applications/ChatGPT.app');
+    if(status.bundlePath!==appPath)return null;
+    const command=(await exec('/bin/ps',['-p',String(status.pid),'-o','comm='],{timeout:2000})).stdout.trim();
+    if(command!==path.join(appPath,'Contents/MacOS/ChatGPT'))return null;
+    const marker=JSON.parse(await fs.readFile(path.join(appPath,'Contents/Resources/lixingyun-startup/manifest.json'),'utf8'));
+    return marker.version==='1.2.0'?status:null;
+  }catch{return null;}
+}
 async function saveState(patch) {
   const next={...await readState(),...patch,revision:randomUUID()};
   await writeState(next);
@@ -264,6 +276,8 @@ async function prepareIntro(session,root,state,cache) {
 }
 
 async function processAppearance(options,root,state,cache) {
+  const native=await nativeSnapshot();
+  if(native?.connected)return native.results;
   return withMutationLock(()=>processAppearanceUnlocked(options,root,state,cache));
 }
 async function processAppearanceUnlocked(options,root,state,cache) {
@@ -311,6 +325,8 @@ async function run(options) {
   }
   if(options.command==='status') {
     const state=await readState();
+    const native=await nativeSnapshot();
+    if(native)return {...native,ok:!native.error,message:native.error?`主题接入：${native.error}`:native.connected?'官方启动自动播放已连接':'等待 Codex 窗口'};
     const results=await withTargets(options,s=>s.evaluate(PROBE));
     const connected=results.some(r=>r.valid);
     const intro=results.map(r=>r.intro).find(r=>r?.token===state.introRequest?.token);
